@@ -1,43 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import bibleData from './data/bible.json'
 import { storage } from './storage'
+import { BOOK_NAMES, BOOK_ABBR, HIGHLIGHT_COLORS } from './data/bookMeta'
+import BookPicker from './components/BookPicker'
+import VerseMenu from './components/VerseMenu'
 import './App.css'
-
-const BOOK_NAMES = {
-  gn: 'Бытие', ex: 'Исход', lv: 'Левит', nm: 'Числа', dt: 'Второзаконие',
-  js: 'Иисус Навин', jud: 'Судьи', rt: 'Руфь', '1sm': '1-я Царств', '2sm': '2-я Царств',
-  '1kgs': '3-я Царств', '2kgs': '4-я Царств', '1ch': '1-я Паралипоменон', '2ch': '2-я Паралипоменон',
-  ezr: 'Ездра', ne: 'Неемия', et: 'Есфирь', job: 'Иов', ps: 'Псалтирь', prv: 'Притчи',
-  ec: 'Екклесиаст', so: 'Песнь Песней', is: 'Исаия', jr: 'Иеремия', lm: 'Плач Иеремии',
-  ez: 'Иезекииль', dn: 'Даниил', ho: 'Осия', jl: 'Иоиль', am: 'Амос', ob: 'Авдий',
-  jn: 'Иона', mi: 'Михей', na: 'Наум', hk: 'Аввакум', zp: 'Софония', hg: 'Аггей',
-  zc: 'Захария', ml: 'Малахия',
-  mt: 'От Матфея', mk: 'От Марка', lk: 'От Луки', jo: 'От Иоанна', act: 'Деяния',
-  rm: 'К Римлянам', '1co': '1-е Коринфянам', '2co': '2-е Коринфянам', gl: 'К Галатам',
-  eph: 'К Ефесянам', ph: 'К Филиппийцам', cl: 'К Колоссянам',
-  '1ts': '1-е Фессалоникийцам', '2ts': '2-е Фессалоникийцам',
-  '1tm': '1-е Тимофею', '2tm': '2-е Тимофею', tt: 'К Титу', phm: 'К Филимону',
-  hb: 'К Евреям', jm: 'Иакова', '1pe': '1-е Петра', '2pe': '2-е Петра',
-  '1jo': '1-е Иоанна', '2jo': '2-е Иоанна', '3jo': '3-е Иоанна', jd: 'Иуды', re: 'Откровение',
-}
-
-const BOOK_ABBR = {
-  gn: 'Быт.', ex: 'Исх.', lv: 'Лев.', nm: 'Чис.', dt: 'Втор.',
-  js: 'Нав.', jud: 'Суд.', rt: 'Руф.', '1sm': '1Цар.', '2sm': '2Цар.',
-  '1kgs': '3Цар.', '2kgs': '4Цар.', '1ch': '1Пар.', '2ch': '2Пар.',
-  ezr: 'Езд.', ne: 'Неем.', et: 'Есф.', job: 'Иов', ps: 'Пс.', prv: 'Притч.',
-  ec: 'Еккл.', so: 'Песн.', is: 'Ис.', jr: 'Иер.', lm: 'Плач',
-  ez: 'Иез.', dn: 'Дан.', ho: 'Ос.', jl: 'Иоил.', am: 'Ам.', ob: 'Авд.',
-  jn: 'Ион.', mi: 'Мих.', na: 'Наум', hk: 'Авв.', zp: 'Соф.', hg: 'Агг.',
-  zc: 'Зах.', ml: 'Мал.',
-  mt: 'Мф.', mk: 'Мк.', lk: 'Лк.', jo: 'Ин.', act: 'Деян.',
-  rm: 'Рим.', '1co': '1Кор.', '2co': '2Кор.', gl: 'Гал.',
-  eph: 'Еф.', ph: 'Флп.', cl: 'Кол.',
-  '1ts': '1Фес.', '2ts': '2Фес.',
-  '1tm': '1Тим.', '2tm': '2Тим.', tt: 'Тит.', phm: 'Флм.',
-  hb: 'Евр.', jm: 'Иак.', '1pe': '1Пет.', '2pe': '2Пет.',
-  '1jo': '1Ин.', '2jo': '2Ин.', '3jo': '3Ин.', jd: 'Иуд.', re: 'Откр.',
-}
 
 function dayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 0)
@@ -50,13 +17,39 @@ function seededIndex(seed, max) {
   return Math.floor(x * max)
 }
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function App() {
-  const [view, setView] = useState('books') // books | chapters | reader | favorites | settings
+  const [view, setView] = useState('books') // books | chapters | reader | bookmarks | settings
   const [bookIndex, setBookIndex] = useState(null)
   const [chapterIndex, setChapterIndex] = useState(null)
-  const [favorites, setFavorites] = useState([])
+  const [loadedChapters, setLoadedChapters] = useState([])
+
+  const [bookmarks, setBookmarks] = useState([])
+  const [editingKey, setEditingKey] = useState(null)
+  const [editingValue, setEditingValue] = useState('')
+
+  const [highlightMap, setHighlightMap] = useState({})
+
   const [settings, setSettings] = useState({ fullBookNames: false })
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+
+  const [activeVerseMenu, setActiveVerseMenu] = useState(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedVerses, setSelectedVerses] = useState(new Set())
+
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const [activeChapterIdx, setActiveChapterIdx] = useState(null)
+  const [activeVerseIdx, setActiveVerseIdx] = useState(null)
+
+  const readerContainerRef = useRef(null)
+  const sentinelRef = useRef(null)
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -73,6 +66,8 @@ function App() {
       }
       setSettingsLoaded(true)
     })
+    loadHighlights()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -81,10 +76,19 @@ function App() {
     }
   }, [settings, settingsLoaded])
 
+  const loadHighlights = async () => {
+    const keys = await storage.getKeys()
+    const hlKeys = keys.filter((k) => k.startsWith('hl_'))
+    const entries = await Promise.all(hlKeys.map(async (k) => [k, await storage.getItem(k)]))
+    const map = {}
+    entries.forEach(([k, v]) => {
+      if (v) map[k] = v
+    })
+    setHighlightMap(map)
+  }
+
   const bookName = (book) =>
-    settings.fullBookNames
-      ? BOOK_NAMES[book.abbrev] || book.abbrev
-      : BOOK_ABBR[book.abbrev] || book.abbrev
+    (settings.fullBookNames ? BOOK_NAMES[book.abbrev] : BOOK_ABBR[book.abbrev]) || book.abbrev
 
   const fullBookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
   const shortRef = (book, chapter, verse) => `${BOOK_ABBR[book.abbrev] || book.abbrev} ${chapter}:${verse}`
@@ -112,13 +116,10 @@ function App() {
       ref: shortRef(book, cIdx + 1, vIdx + 1),
       text: book.chapters[cIdx][vIdx],
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allVerseRefs])
 
-  const openVerseOfDay = () => {
-    setBookIndex(verseOfDay.bookIdx)
-    setChapterIndex(verseOfDay.chapterIdx)
-    setView('reader')
-  }
+  const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
 
   const openBook = (idx) => {
     setBookIndex(idx)
@@ -127,82 +128,285 @@ function App() {
 
   const openChapter = (idx) => {
     setChapterIndex(idx)
+    setLoadedChapters([idx])
     setView('reader')
+    setActiveChapterIdx(idx)
+    setActiveVerseIdx(0)
+    requestAnimationFrame(() => window.scrollTo(0, 0))
+  }
+
+  const navigateTo = (bIdx, cIdx, vIdx) => {
+    setBookIndex(bIdx)
+    setChapterIndex(cIdx)
+    setLoadedChapters([cIdx])
+    setView('reader')
+    setActiveChapterIdx(cIdx)
+    setActiveVerseIdx(vIdx ?? 0)
+    setPickerOpen(false)
+    if (vIdx === null || vIdx === undefined) {
+      requestAnimationFrame(() => window.scrollTo(0, 0))
+    } else {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`v-${cIdx}-${vIdx}`)
+          el?.scrollIntoView({ block: 'start' })
+        })
+      })
+    }
+  }
+
+  const openVerseOfDay = () => {
+    navigateTo(verseOfDay.bookIdx, verseOfDay.chapterIdx, verseOfDay.verseIdx)
   }
 
   const goBack = () => {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
-    else if (view === 'favorites') setView('books')
+    else if (view === 'bookmarks') setView('books')
     else if (view === 'settings') setView('books')
   }
 
-  const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
-  const currentChapter = currentBook && chapterIndex !== null ? currentBook.chapters[chapterIndex] : null
+  useEffect(() => {
+    if (view !== 'reader' || !currentBook) return
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setLoadedChapters((prev) => {
+            const last = prev[prev.length - 1]
+            if (last + 1 < currentBook.chapters.length) {
+              return [...prev, last + 1]
+            }
+            return prev
+          })
+        }
+      },
+      { rootMargin: '600px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, currentBook, loadedChapters.length])
 
-  const handleVerseTap = async (verseIdx, text) => {
-    const ref = shortRef(currentBook, chapterIndex + 1, verseIdx + 1)
-    const key = `fav_${currentBook.abbrev}_${chapterIndex + 1}_${verseIdx + 1}`
-    const tg = window.Telegram?.WebApp
-    const supportsPopup = !!(tg?.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1'))
-
-    if (supportsPopup) {
-      tg.showPopup(
-        {
-          title: ref,
-          message: text,
-          buttons: [
-            { id: 'fav', type: 'default', text: '⭐ В избранное' },
-            { id: 'share', type: 'default', text: '↗ Поделиться' },
-            { id: 'cancel', type: 'cancel' },
-          ],
-        },
-        async (buttonId) => {
-          if (buttonId === 'fav') {
-            await storage.setItem(key, JSON.stringify({ ref, text }))
-            tg.HapticFeedback?.notificationOccurred?.('success')
-          } else if (buttonId === 'share') {
-            const shareText = `${ref}\n«${text}»`
-            const url = `https://t.me/share/url?url=&text=${encodeURIComponent(shareText)}`
-            tg.openTelegramLink(url)
+  useEffect(() => {
+    if (view !== 'reader') return
+    let ticking = false
+    const handleScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const verses = document.querySelectorAll('.verse')
+        let found = null
+        for (const el of verses) {
+          const rect = el.getBoundingClientRect()
+          if (rect.top >= 60) {
+            found = el
+            break
           }
         }
-      )
+        if (found) {
+          setActiveChapterIdx(Number(found.dataset.c))
+          setActiveVerseIdx(Number(found.dataset.v))
+        }
+        ticking = false
+      })
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [view, loadedChapters])
+
+  const verseKey = (cIdx, vIdx) => `${cIdx}-${vIdx}`
+
+  const handleVerseTap = (cIdx, vIdx, text) => {
+    if (selectionMode) {
+      toggleSelected(cIdx, vIdx)
+      return
+    }
+    const ref = shortRef(currentBook, cIdx + 1, vIdx + 1)
+    setActiveVerseMenu({ chapterIdx: cIdx, verseIdx: vIdx, ref, text })
+  }
+
+  const toggleSelected = (cIdx, vIdx) => {
+    const k = verseKey(cIdx, vIdx)
+    setSelectedVerses((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
+
+  const highlightKeyFor = (cIdx, vIdx) => `hl_${currentBook.abbrev}_${cIdx + 1}_${vIdx + 1}`
+
+  const highlightStyleFor = (cIdx, vIdx) => {
+    const colorId = highlightMap[highlightKeyFor(cIdx, vIdx)]
+    if (!colorId) return undefined
+    const color = HIGHLIGHT_COLORS.find((c) => c.id === colorId)
+    return color ? { backgroundColor: hexToRgba(color.hex, 0.28) } : undefined
+  }
+
+  const applyHighlight = async (cIdx, vIdx, colorId) => {
+    const key = highlightKeyFor(cIdx, vIdx)
+    if (colorId) {
+      await storage.setItem(key, colorId)
+      setHighlightMap((prev) => ({ ...prev, [key]: colorId }))
     } else {
-      if (window.confirm(`Добавить в избранное?\n\n${ref}\n${text}`)) {
-        await storage.setItem(key, JSON.stringify({ ref, text }))
-        alert('Добавлено в избранное')
-      }
+      await storage.removeItem(key)
+      setHighlightMap((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
     }
   }
 
-  const openFavorites = async () => {
-    const keys = await storage.getKeys()
-    const items = await Promise.all(
-      keys
-        .filter((k) => k.startsWith('fav_'))
-        .map(async (key) => {
-          const raw = await storage.getItem(key)
-          try {
-            return { key, ...JSON.parse(raw) }
-          } catch {
-            return null
-          }
-        })
-    )
-    setFavorites(items.filter(Boolean))
-    setView('favorites')
+  const addBookmark = async (cIdx, vIdx, ref, text) => {
+    const key = `bm_${currentBook.abbrev}_${cIdx + 1}_${vIdx + 1}`
+    await storage.setItem(key, JSON.stringify({ name: ref, ref, text }))
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('success')
   }
 
-  const removeFavorite = async (key) => {
-    await storage.removeItem(key)
-    setFavorites((prev) => prev.filter((f) => f.key !== key))
+  const shareText = (text) => {
+    const tg = window.Telegram?.WebApp
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`)
+    } else {
+      navigator.clipboard?.writeText(text)
+      alert('Текст скопирован')
+    }
   }
+
+  const exitSelection = () => {
+    setSelectionMode(false)
+    setSelectedVerses(new Set())
+  }
+
+  const collectSelected = () =>
+    Array.from(selectedVerses)
+      .map((k) => {
+        const [cIdx, vIdx] = k.split('-').map(Number)
+        return { cIdx, vIdx, ref: shortRef(currentBook, cIdx + 1, vIdx + 1), text: currentBook.chapters[cIdx][vIdx] }
+      })
+      .sort((a, b) => a.cIdx - b.cIdx || a.vIdx - b.vIdx)
+
+  const shareSelection = () => {
+    const items = collectSelected()
+    shareText(items.map((i) => `${i.ref}\n«${i.text}»`).join('\n\n'))
+    exitSelection()
+  }
+
+  const bookmarkSelection = async () => {
+    const items = collectSelected()
+    await Promise.all(
+      items.map((i) => {
+        const key = `bm_${currentBook.abbrev}_${i.cIdx + 1}_${i.vIdx + 1}`
+        return storage.setItem(key, JSON.stringify({ name: i.ref, ref: i.ref, text: i.text }))
+      })
+    )
+    exitSelection()
+  }
+
+  const applyColorToSelection = async (colorId) => {
+    const items = collectSelected()
+    await Promise.all(
+      items.map((i) => {
+        const key = `hl_${currentBook.abbrev}_${i.cIdx + 1}_${i.vIdx + 1}`
+        return storage.setItem(key, colorId)
+      })
+    )
+    setHighlightMap((prev) => {
+      const next = { ...prev }
+      items.forEach((i) => {
+        next[`hl_${currentBook.abbrev}_${i.cIdx + 1}_${i.vIdx + 1}`] = colorId
+      })
+      return next
+    })
+    exitSelection()
+  }
+
+  const openBookmarks = async () => {
+    const keys = await storage.getKeys()
+    const bmKeys = keys.filter((k) => k.startsWith('bm_'))
+    const items = await Promise.all(
+      bmKeys.map(async (key) => {
+        const raw = await storage.getItem(key)
+        try {
+          return { key, ...JSON.parse(raw) }
+        } catch {
+          return null
+        }
+      })
+    )
+    setBookmarks(items.filter(Boolean))
+    setView('bookmarks')
+  }
+
+  const removeBookmark = async (key) => {
+    await storage.removeItem(key)
+    setBookmarks((prev) => prev.filter((b) => b.key !== key))
+  }
+
+  const startEditBookmark = (bm) => {
+    setEditingKey(bm.key)
+    setEditingValue(bm.name)
+  }
+
+  const saveEditBookmark = async (bm) => {
+    const updated = { ...bm, name: editingValue.trim() || bm.ref }
+    await storage.setItem(bm.key, JSON.stringify(updated))
+    setBookmarks((prev) => prev.map((b) => (b.key === bm.key ? updated : b)))
+    setEditingKey(null)
+  }
+
+  const breadcrumbText = currentBook
+    ? `${BOOK_ABBR[currentBook.abbrev] || currentBook.abbrev} ${(activeChapterIdx ?? chapterIndex) + 1}:${(activeVerseIdx ?? 0) + 1}`
+    : ''
 
   return (
     <div className="app">
-      {view !== 'books' && (
+      {pickerOpen && (
+        <BookPicker
+          bibleData={bibleData}
+          fullBookNames={settings.fullBookNames}
+          onSelect={navigateTo}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {activeVerseMenu && currentBook && (
+        <VerseMenu
+          verseRef={activeVerseMenu.ref}
+          verseText={activeVerseMenu.text}
+          activeColor={highlightMap[highlightKeyFor(activeVerseMenu.chapterIdx, activeVerseMenu.verseIdx)] || null}
+          onClose={() => setActiveVerseMenu(null)}
+          onBookmark={async () => {
+            await addBookmark(activeVerseMenu.chapterIdx, activeVerseMenu.verseIdx, activeVerseMenu.ref, activeVerseMenu.text)
+            setActiveVerseMenu(null)
+          }}
+          onShare={() => {
+            shareText(`${activeVerseMenu.ref}\n«${activeVerseMenu.text}»`)
+            setActiveVerseMenu(null)
+          }}
+          onHighlight={(colorId) => applyHighlight(activeVerseMenu.chapterIdx, activeVerseMenu.verseIdx, colorId)}
+          onEnterSelection={() => {
+            setSelectionMode(true)
+            setSelectedVerses(new Set([verseKey(activeVerseMenu.chapterIdx, activeVerseMenu.verseIdx)]))
+            setActiveVerseMenu(null)
+          }}
+        />
+      )}
+
+      {view !== 'books' && view !== 'reader' && (
         <button className="back-btn" onClick={goBack}>← Назад</button>
+      )}
+
+      {view === 'reader' && currentBook && (
+        <div className="topbar-sticky">
+          <button className="back-btn topbar-back" onClick={goBack}>←</button>
+          <button className="breadcrumb" onClick={() => setPickerOpen(true)}>{breadcrumbText}</button>
+        </div>
       )}
 
       {view === 'books' && (
@@ -210,7 +414,7 @@ function App() {
           <div className="header-row">
             <h1>Библия</h1>
             <div className="header-actions">
-              <button className="icon-btn" onClick={openFavorites}>⭐</button>
+              <button className="icon-btn" onClick={openBookmarks}>⭐</button>
               <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>
             </div>
           </div>
@@ -221,7 +425,7 @@ function App() {
             <div className="vod-text">{verseOfDay.text}</div>
           </div>
 
-          <div className="books-grid">
+          <div className={`books-grid ${settings.fullBookNames ? 'full-names' : ''}`}>
             {bibleData.map((book, idx) => (
               <div
                 key={book.abbrev}
@@ -249,26 +453,50 @@ function App() {
         </div>
       )}
 
-      {view === 'reader' && currentBook && currentChapter && (
-        <div className="reader">
-          <h2>{fullBookName(currentBook)} {chapterIndex + 1}</h2>
-          {currentChapter.map((verse, idx) => (
-            <p key={idx} className="verse" onClick={() => handleVerseTap(idx, verse)}>
-              <span className="verse-num">{idx + 1}</span> {verse}
-            </p>
+      {view === 'reader' && currentBook && (
+        <div className="reader" ref={readerContainerRef}>
+          {loadedChapters.map((cIdx) => (
+            <div key={cIdx} className="chapter-block">
+              <h2>{fullBookName(currentBook)} {cIdx + 1}</h2>
+              {currentBook.chapters[cIdx].map((verse, vIdx) => (
+                <p
+                  key={vIdx}
+                  id={`v-${cIdx}-${vIdx}`}
+                  data-c={cIdx}
+                  data-v={vIdx}
+                  className={`verse ${selectedVerses.has(verseKey(cIdx, vIdx)) ? 'verse-selected' : ''}`}
+                  style={highlightStyleFor(cIdx, vIdx)}
+                  onClick={() => handleVerseTap(cIdx, vIdx, verse)}
+                >
+                  <span className="verse-num">{vIdx + 1}</span> {verse}
+                </p>
+              ))}
+            </div>
           ))}
+          <div ref={sentinelRef} className="reader-sentinel" />
         </div>
       )}
 
-      {view === 'favorites' && (
+      {view === 'bookmarks' && (
         <div className="list">
-          <h2>Избранное</h2>
-          {favorites.length === 0 && <p className="hint">Пока пусто — тапни по любому стиху при чтении</p>}
-          {favorites.map((f) => (
-            <div key={f.key} className="fav-item">
-              <div className="fav-ref">{f.ref}</div>
-              <div className="fav-text">{f.text}</div>
-              <button className="fav-remove" onClick={() => removeFavorite(f.key)}>Удалить</button>
+          <h2>Закладки</h2>
+          {bookmarks.length === 0 && <p className="hint">Пока пусто — тапни по стиху при чтении и выбери «Закладка»</p>}
+          {bookmarks.map((b) => (
+            <div key={b.key} className="fav-item">
+              {editingKey === b.key ? (
+                <input
+                  className="fav-name-input"
+                  value={editingValue}
+                  autoFocus
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={() => saveEditBookmark(b)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveEditBookmark(b)}
+                />
+              ) : (
+                <div className="fav-ref" onClick={() => startEditBookmark(b)}>{b.name} ✎</div>
+              )}
+              <div className="fav-text">{b.text}</div>
+              <button className="fav-remove" onClick={() => removeBookmark(b.key)}>Удалить</button>
             </div>
           ))}
         </div>
@@ -280,12 +508,31 @@ function App() {
           <div className="setting-row" onClick={() => setSettings((s) => ({ ...s, fullBookNames: !s.fullBookNames }))}>
             <div>
               <div className="setting-title">Полные названия книг</div>
-              <div className="setting-desc">Показывать "Бытие" вместо "Быт." в сетке</div>
+              <div className="setting-desc">Показывать «Бытие» вместо «Быт.» в сетке</div>
             </div>
             <div className={`toggle ${settings.fullBookNames ? 'toggle-on' : ''}`}>
               <div className="toggle-knob" />
             </div>
           </div>
+        </div>
+      )}
+
+      {selectionMode && (
+        <div className="selection-bar">
+          <button className="selection-close" onClick={exitSelection}>×</button>
+          <span className="selection-count">{selectedVerses.size} выбрано</span>
+          <div className="selection-colors">
+            {HIGHLIGHT_COLORS.map((c) => (
+              <button
+                key={c.id}
+                className="color-dot"
+                style={{ background: c.hex }}
+                onClick={() => applyColorToSelection(c.id)}
+              />
+            ))}
+          </div>
+          <button className="selection-action" onClick={bookmarkSelection}>⭐</button>
+          <button className="selection-action" onClick={shareSelection}>↗</button>
         </div>
       )}
     </div>

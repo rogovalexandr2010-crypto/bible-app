@@ -38,19 +38,6 @@ body {
   margin-bottom: 16px;
 }
 
-.fav-nav-btn {
-  background: var(--secondary-bg);
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.list h1, .list h2 {
-  margin: 0 0 16px 0;
-}
-
 .header-actions {
   display: flex;
   gap: 8px;
@@ -66,21 +53,188 @@ body {
   cursor: pointer;
 }
 
+.list h1, .list h2 {
+  margin: 0 0 16px 0;
+}
+
+.verse-of-day {
+  background: var(--secondary-bg);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  border-left: 3px solid var(--link);
+}
+
+.vod-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--hint);
+  margin-bottom: 4px;
+}
+
+.vod-ref {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.vod-text {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* сетка книг */
 .books-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 8px;
 }
 
+.books-grid.full-names {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+}
+
 .book-cell {
   background: var(--secondary-bg);
   border-radius: 8px;
   text-align: center;
-  padding: 12px 6px;
+  padding: 10px 6px;
   cursor: pointer;
+  font-size: 14px;
+  line-height: 1.25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.books-grid.full-names .book-cell {
+  font-size: 12px;
+}
+
+/* сетка глав */
+.chapters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 8px;
+}
+
+.chapter-cell {
+  background: var(--secondary-bg);
+  border-radius: 8px;
+  text-align: center;
+  padding: 12px 0;
+  cursor: pointer;
+}
+
+/* верхняя закреплённая панель в читалке */
+.topbar-sticky {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  z-index: 20;
+}
+
+.topbar-back {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 18px;
+}
+
+.breadcrumb {
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: bold;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+/* читалка — лента глав */
+.chapter-block {
+  margin-bottom: 24px;
+}
+
+.reader .verse {
+  line-height: 1.6;
+  margin: 0 0 10px 0;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.reader .verse:active {
+  background: var(--secondary-bg);
+}
+
+.verse-selected {
+  outline: 2px solid var(--link);
+}
+
+.verse-num {
+  color: var(--hint);
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 4px;
+  vertical-align: super;
+}
+
+.reader-sentinel {
+  height: 1px;
+}
+
+.hint {
+  color: var(--hint);
   font-size: 14px;
 }
 
+/* закладки */
+.fav-item {
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.fav-ref {
+  font-weight: bold;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.fav-name-input {
+  font-weight: bold;
+  margin-bottom: 4px;
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--link);
+  font-size: 15px;
+}
+
+.fav-text {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.fav-remove {
+  background: none;
+  border: none;
+  color: #e05252;
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* настройки */
 .setting-row {
   display: flex;
   justify-content: space-between;
@@ -131,94 +285,214 @@ body {
   left: 20px;
 }
 
-.chapters-grid {
+/* пикер книга/глава/стих */
+.picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.picker-sheet {
+  background: var(--bg);
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+}
+
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.picker-back {
+  background: none;
+  border: none;
+  color: var(--link);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.picker-close {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.picker-title {
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.picker-read-all {
+  display: block;
+  width: 100%;
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--link);
+}
+
+.picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 8px;
 }
 
-.chapter-cell {
+.picker-grid-numbers {
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+}
+
+.picker-cell {
   background: var(--secondary-bg);
   border-radius: 8px;
   text-align: center;
-  padding: 12px 0;
+  padding: 10px 6px;
   cursor: pointer;
-}
-
-.reader .verse {
-  line-height: 1.6;
-  margin: 0 0 10px 0;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.reader .verse:active {
-  background: var(--secondary-bg);
-}
-
-.verse-num {
-  color: var(--hint);
-  font-size: 12px;
-  font-weight: bold;
-  margin-right: 4px;
-  vertical-align: super;
-}
-
-.hint {
-  color: var(--hint);
   font-size: 14px;
 }
 
-.fav-item {
+/* меню действий со стихом */
+.verse-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.verse-menu {
+  background: var(--bg);
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+}
+
+.verse-menu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.verse-menu-plus,
+.verse-menu-close {
   background: var(--secondary-bg);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-
-.fav-ref {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.fav-text {
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-
-.fav-remove {
-  background: none;
   border: none;
-  color: #e05252;
-  font-size: 13px;
-  padding: 0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
+  color: var(--text);
 }
 
-.verse-of-day {
-  background: var(--secondary-bg);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  border-left: 3px solid var(--link);
-}
-
-.vod-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--hint);
-  margin-bottom: 4px;
-}
-
-.vod-ref {
+.verse-menu-ref {
   font-weight: bold;
-  margin-bottom: 4px;
 }
 
-.vod-text {
-  font-size: 14px;
+.verse-menu-text {
+  font-size: 15px;
   line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.verse-menu-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.verse-menu-action {
+  flex: 1;
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.verse-menu-colors {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-dot-active {
+  border-color: var(--text);
+}
+
+/* нижняя панель мультивыбора */
+.selection-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--secondary-bg);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 90;
+}
+
+.selection-close {
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.selection-count {
+  font-size: 13px;
+  color: var(--hint);
+  flex-shrink: 0;
+}
+
+.selection-colors {
+  display: flex;
+  gap: 6px;
+}
+
+.selection-action {
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  cursor: pointer;
 }

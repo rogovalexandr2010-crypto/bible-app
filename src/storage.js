@@ -28,7 +28,7 @@ export const storage = {
       if (hasCloudStorage()) {
         window.Telegram.WebApp.CloudStorage.getKeys((err, keys) => resolve(keys || []))
       } else {
-        resolve(Object.keys(localStorage).filter((k) => k.startsWith('fav_')))
+        resolve(Object.keys(localStorage))
       }
     })
   },
