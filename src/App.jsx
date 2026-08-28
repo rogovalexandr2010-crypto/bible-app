@@ -1,121 +1,97 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useState, useEffect } from 'react'
+import bibleData from './data/bible.json'
 import './App.css'
 
+const BOOK_NAMES = {
+  gn: 'Бытие', ex: 'Исход', lv: 'Левит', nm: 'Числа', dt: 'Второзаконие',
+  js: 'Иисус Навин', jud: 'Судьи', rt: 'Руфь', '1sm': '1-я Царств', '2sm': '2-я Царств',
+  '1kgs': '3-я Царств', '2kgs': '4-я Царств', '1ch': '1-я Паралипоменон', '2ch': '2-я Паралипоменон',
+  ezr: 'Ездра', ne: 'Неемия', et: 'Есфирь', job: 'Иов', ps: 'Псалтирь', prv: 'Притчи',
+  ec: 'Екклесиаст', so: 'Песнь Песней', is: 'Исаия', jr: 'Иеремия', lm: 'Плач Иеремии',
+  ez: 'Иезекииль', dn: 'Даниил', ho: 'Осия', jl: 'Иоиль', am: 'Амос', ob: 'Авдий',
+  jn: 'Иона', mi: 'Михей', na: 'Наум', hk: 'Аввакум', zp: 'Софония', hg: 'Аггей',
+  zc: 'Захария', ml: 'Малахия',
+  mt: 'От Матфея', mk: 'От Марка', lk: 'От Луки', jo: 'От Иоанна', act: 'Деяния',
+  rm: 'К Римлянам', '1co': '1-е Коринфянам', '2co': '2-е Коринфянам', gl: 'К Галатам',
+  eph: 'К Ефесянам', ph: 'К Филиппийцам', cl: 'К Колоссянам',
+  '1ts': '1-е Фессалоникийцам', '2ts': '2-е Фессалоникийцам',
+  '1tm': '1-е Тимофею', '2tm': '2-е Тимофею', tt: 'К Титу', phm: 'К Филимону',
+  hb: 'К Евреям', jm: 'Иакова', '1pe': '1-е Петра', '2pe': '2-е Петра',
+  '1jo': '1-е Иоанна', '2jo': '2-е Иоанна', '3jo': '3-е Иоанна', jd: 'Иуды', re: 'Откровение',
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [view, setView] = useState('books') // books | chapters | reader
+  const [bookIndex, setBookIndex] = useState(null)
+  const [chapterIndex, setChapterIndex] = useState(null)
+
+  useEffect(() => {
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready()
+      window.Telegram.WebApp.expand()
+    }
+  }, [])
+
+  const openBook = (idx) => {
+    setBookIndex(idx)
+    setView('chapters')
+  }
+
+  const openChapter = (idx) => {
+    setChapterIndex(idx)
+    setView('reader')
+  }
+
+  const goBack = () => {
+    if (view === 'reader') setView('chapters')
+    else if (view === 'chapters') setView('books')
+  }
+
+  const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
+  const currentChapter = currentBook && chapterIndex !== null ? currentBook.chapters[chapterIndex] : null
+  const bookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      {view !== 'books' && (
+        <button className="back-btn" onClick={goBack}>← Назад</button>
+      )}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {view === 'books' && (
+        <div className="list">
+          <h1>Библия</h1>
+          {bibleData.map((book, idx) => (
+            <div key={book.abbrev} className="list-item" onClick={() => openBook(idx)}>
+              {bookName(book)}
+            </div>
+          ))}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {view === 'chapters' && currentBook && (
+        <div className="list">
+          <h2>{bookName(currentBook)}</h2>
+          <div className="chapters-grid">
+            {currentBook.chapters.map((_, idx) => (
+              <div key={idx} className="chapter-cell" onClick={() => openChapter(idx)}>
+                {idx + 1}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'reader' && currentBook && currentChapter && (
+        <div className="reader">
+          <h2>{bookName(currentBook)} {chapterIndex + 1}</h2>
+          {currentChapter.map((verse, idx) => (
+            <p key={idx} className="verse">
+              <span className="verse-num">{idx + 1}</span> {verse}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
