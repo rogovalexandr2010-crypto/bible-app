@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import bibleData from './data/bible.json'
 import { storage } from './storage'
 import './App.css'
@@ -21,6 +21,17 @@ const BOOK_NAMES = {
   '1jo': '1-е Иоанна', '2jo': '2-е Иоанна', '3jo': '3-е Иоанна', jd: 'Иуды', re: 'Откровение',
 }
 
+function dayOfYear(date) {
+  const start = new Date(date.getFullYear(), 0, 0)
+  return Math.floor((date - start) / 86400000)
+}
+
+function seededIndex(seed, max) {
+  let x = Math.sin(seed) * 10000
+  x = x - Math.floor(x)
+  return Math.floor(x * max)
+}
+
 function App() {
   const [view, setView] = useState('books') // books | chapters | reader | favorites
   const [bookIndex, setBookIndex] = useState(null)
@@ -33,6 +44,40 @@ function App() {
       window.Telegram.WebApp.expand()
     }
   }, [])
+
+  const bookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
+
+  // индекс всех стихов Библии — считается один раз
+  const allVerseRefs = useMemo(() => {
+    const refs = []
+    bibleData.forEach((book, bIdx) => {
+      book.chapters.forEach((chapter, cIdx) => {
+        chapter.forEach((_, vIdx) => refs.push([bIdx, cIdx, vIdx]))
+      })
+    })
+    return refs
+  }, [])
+
+  const verseOfDay = useMemo(() => {
+    const today = new Date()
+    const seed = today.getFullYear() * 1000 + dayOfYear(today)
+    const idx = seededIndex(seed, allVerseRefs.length)
+    const [bIdx, cIdx, vIdx] = allVerseRefs[idx]
+    const book = bibleData[bIdx]
+    return {
+      bookIdx: bIdx,
+      chapterIdx: cIdx,
+      verseIdx: vIdx,
+      ref: `${bookName(book)} ${cIdx + 1}:${vIdx + 1}`,
+      text: book.chapters[cIdx][vIdx],
+    }
+  }, [allVerseRefs])
+
+  const openVerseOfDay = () => {
+    setBookIndex(verseOfDay.bookIdx)
+    setChapterIndex(verseOfDay.chapterIdx)
+    setView('reader')
+  }
 
   const openBook = (idx) => {
     setBookIndex(idx)
@@ -52,9 +97,8 @@ function App() {
 
   const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
   const currentChapter = currentBook && chapterIndex !== null ? currentBook.chapters[chapterIndex] : null
-  const bookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
 
-    const handleVerseTap = async (verseIdx, text) => {
+  const handleVerseTap = async (verseIdx, text) => {
     const ref = `${bookName(currentBook)} ${chapterIndex + 1}:${verseIdx + 1}`
     const key = `fav_${currentBook.abbrev}_${chapterIndex + 1}_${verseIdx + 1}`
     const tg = window.Telegram?.WebApp
@@ -123,6 +167,13 @@ function App() {
             <h1>Библия</h1>
             <button className="fav-nav-btn" onClick={openFavorites}>⭐ Избранное</button>
           </div>
+
+          <div className="verse-of-day" onClick={openVerseOfDay}>
+            <div className="vod-label">Стих дня</div>
+            <div className="vod-ref">{verseOfDay.ref}</div>
+            <div className="vod-text">{verseOfDay.text}</div>
+          </div>
+
           {bibleData.map((book, idx) => (
             <div key={book.abbrev} className="list-item" onClick={() => openBook(idx)}>
               {bookName(book)}
