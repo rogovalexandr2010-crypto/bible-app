@@ -21,6 +21,24 @@ const BOOK_NAMES = {
   '1jo': '1-е Иоанна', '2jo': '2-е Иоанна', '3jo': '3-е Иоанна', jd: 'Иуды', re: 'Откровение',
 }
 
+const BOOK_ABBR = {
+  gn: 'Быт.', ex: 'Исх.', lv: 'Лев.', nm: 'Чис.', dt: 'Втор.',
+  js: 'Нав.', jud: 'Суд.', rt: 'Руф.', '1sm': '1Цар.', '2sm': '2Цар.',
+  '1kgs': '3Цар.', '2kgs': '4Цар.', '1ch': '1Пар.', '2ch': '2Пар.',
+  ezr: 'Езд.', ne: 'Неем.', et: 'Есф.', job: 'Иов', ps: 'Пс.', prv: 'Притч.',
+  ec: 'Еккл.', so: 'Песн.', is: 'Ис.', jr: 'Иер.', lm: 'Плач',
+  ez: 'Иез.', dn: 'Дан.', ho: 'Ос.', jl: 'Иоил.', am: 'Ам.', ob: 'Авд.',
+  jn: 'Ион.', mi: 'Мих.', na: 'Наум', hk: 'Авв.', zp: 'Соф.', hg: 'Агг.',
+  zc: 'Зах.', ml: 'Мал.',
+  mt: 'Мф.', mk: 'Мк.', lk: 'Лк.', jo: 'Ин.', act: 'Деян.',
+  rm: 'Рим.', '1co': '1Кор.', '2co': '2Кор.', gl: 'Гал.',
+  eph: 'Еф.', ph: 'Флп.', cl: 'Кол.',
+  '1ts': '1Фес.', '2ts': '2Фес.',
+  '1tm': '1Тим.', '2tm': '2Тим.', tt: 'Тит.', phm: 'Флм.',
+  hb: 'Евр.', jm: 'Иак.', '1pe': '1Пет.', '2pe': '2Пет.',
+  '1jo': '1Ин.', '2jo': '2Ин.', '3jo': '3Ин.', jd: 'Иуд.', re: 'Откр.',
+}
+
 function dayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 0)
   return Math.floor((date - start) / 86400000)
@@ -33,21 +51,44 @@ function seededIndex(seed, max) {
 }
 
 function App() {
-  const [view, setView] = useState('books') // books | chapters | reader | favorites
+  const [view, setView] = useState('books') // books | chapters | reader | favorites | settings
   const [bookIndex, setBookIndex] = useState(null)
   const [chapterIndex, setChapterIndex] = useState(null)
   const [favorites, setFavorites] = useState([])
+  const [settings, setSettings] = useState({ fullBookNames: false })
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready()
       window.Telegram.WebApp.expand()
     }
+    storage.getItem('settings').then((raw) => {
+      if (raw) {
+        try {
+          setSettings(JSON.parse(raw))
+        } catch {
+          // игнорируем битые данные
+        }
+      }
+      setSettingsLoaded(true)
+    })
   }, [])
 
-  const bookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
+  useEffect(() => {
+    if (settingsLoaded) {
+      storage.setItem('settings', JSON.stringify(settings))
+    }
+  }, [settings, settingsLoaded])
 
-  // индекс всех стихов Библии — считается один раз
+  const bookName = (book) =>
+    settings.fullBookNames
+      ? BOOK_NAMES[book.abbrev] || book.abbrev
+      : BOOK_ABBR[book.abbrev] || book.abbrev
+
+  const fullBookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
+  const shortRef = (book, chapter, verse) => `${BOOK_ABBR[book.abbrev] || book.abbrev} ${chapter}:${verse}`
+
   const allVerseRefs = useMemo(() => {
     const refs = []
     bibleData.forEach((book, bIdx) => {
@@ -68,7 +109,7 @@ function App() {
       bookIdx: bIdx,
       chapterIdx: cIdx,
       verseIdx: vIdx,
-      ref: `${bookName(book)} ${cIdx + 1}:${vIdx + 1}`,
+      ref: shortRef(book, cIdx + 1, vIdx + 1),
       text: book.chapters[cIdx][vIdx],
     }
   }, [allVerseRefs])
@@ -93,13 +134,14 @@ function App() {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
     else if (view === 'favorites') setView('books')
+    else if (view === 'settings') setView('books')
   }
 
   const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
   const currentChapter = currentBook && chapterIndex !== null ? currentBook.chapters[chapterIndex] : null
 
   const handleVerseTap = async (verseIdx, text) => {
-    const ref = `${bookName(currentBook)} ${chapterIndex + 1}:${verseIdx + 1}`
+    const ref = shortRef(currentBook, chapterIndex + 1, verseIdx + 1)
     const key = `fav_${currentBook.abbrev}_${chapterIndex + 1}_${verseIdx + 1}`
     const tg = window.Telegram?.WebApp
     const supportsPopup = !!(tg?.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1'))
@@ -137,14 +179,16 @@ function App() {
   const openFavorites = async () => {
     const keys = await storage.getKeys()
     const items = await Promise.all(
-      keys.map(async (key) => {
-        const raw = await storage.getItem(key)
-        try {
-          return { key, ...JSON.parse(raw) }
-        } catch {
-          return null
-        }
-      })
+      keys
+        .filter((k) => k.startsWith('fav_'))
+        .map(async (key) => {
+          const raw = await storage.getItem(key)
+          try {
+            return { key, ...JSON.parse(raw) }
+          } catch {
+            return null
+          }
+        })
     )
     setFavorites(items.filter(Boolean))
     setView('favorites')
@@ -165,7 +209,10 @@ function App() {
         <div className="list">
           <div className="header-row">
             <h1>Библия</h1>
-            <button className="fav-nav-btn" onClick={openFavorites}>⭐ Избранное</button>
+            <div className="header-actions">
+              <button className="icon-btn" onClick={openFavorites}>⭐</button>
+              <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>
+            </div>
           </div>
 
           <div className="verse-of-day" onClick={openVerseOfDay}>
@@ -174,17 +221,24 @@ function App() {
             <div className="vod-text">{verseOfDay.text}</div>
           </div>
 
-          {bibleData.map((book, idx) => (
-            <div key={book.abbrev} className="list-item" onClick={() => openBook(idx)}>
-              {bookName(book)}
-            </div>
-          ))}
+          <div className="books-grid">
+            {bibleData.map((book, idx) => (
+              <div
+                key={book.abbrev}
+                className="book-cell"
+                title={fullBookName(book)}
+                onClick={() => openBook(idx)}
+              >
+                {bookName(book)}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {view === 'chapters' && currentBook && (
         <div className="list">
-          <h2>{bookName(currentBook)}</h2>
+          <h2>{fullBookName(currentBook)}</h2>
           <div className="chapters-grid">
             {currentBook.chapters.map((_, idx) => (
               <div key={idx} className="chapter-cell" onClick={() => openChapter(idx)}>
@@ -197,7 +251,7 @@ function App() {
 
       {view === 'reader' && currentBook && currentChapter && (
         <div className="reader">
-          <h2>{bookName(currentBook)} {chapterIndex + 1}</h2>
+          <h2>{fullBookName(currentBook)} {chapterIndex + 1}</h2>
           {currentChapter.map((verse, idx) => (
             <p key={idx} className="verse" onClick={() => handleVerseTap(idx, verse)}>
               <span className="verse-num">{idx + 1}</span> {verse}
@@ -217,6 +271,21 @@ function App() {
               <button className="fav-remove" onClick={() => removeFavorite(f.key)}>Удалить</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {view === 'settings' && (
+        <div className="list">
+          <h2>Настройки</h2>
+          <div className="setting-row" onClick={() => setSettings((s) => ({ ...s, fullBookNames: !s.fullBookNames }))}>
+            <div>
+              <div className="setting-title">Полные названия книг</div>
+              <div className="setting-desc">Показывать "Бытие" вместо "Быт." в сетке</div>
+            </div>
+            <div className={`toggle ${settings.fullBookNames ? 'toggle-on' : ''}`}>
+              <div className="toggle-knob" />
+            </div>
+          </div>
         </div>
       )}
     </div>
