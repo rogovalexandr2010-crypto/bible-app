@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import bibleData from './data/bible.json'
+import { storage } from './storage'
 import './App.css'
 
 const BOOK_NAMES = {
@@ -21,9 +22,10 @@ const BOOK_NAMES = {
 }
 
 function App() {
-  const [view, setView] = useState('books') // books | chapters | reader
+  const [view, setView] = useState('books') // books | chapters | reader | favorites
   const [bookIndex, setBookIndex] = useState(null)
   const [chapterIndex, setChapterIndex] = useState(null)
+  const [favorites, setFavorites] = useState([])
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -45,11 +47,69 @@ function App() {
   const goBack = () => {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
+    else if (view === 'favorites') setView('books')
   }
 
   const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
   const currentChapter = currentBook && chapterIndex !== null ? currentBook.chapters[chapterIndex] : null
   const bookName = (book) => BOOK_NAMES[book.abbrev] || book.abbrev
+
+    const handleVerseTap = async (verseIdx, text) => {
+    const ref = `${bookName(currentBook)} ${chapterIndex + 1}:${verseIdx + 1}`
+    const key = `fav_${currentBook.abbrev}_${chapterIndex + 1}_${verseIdx + 1}`
+    const tg = window.Telegram?.WebApp
+    const supportsPopup = !!(tg?.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1'))
+
+    if (supportsPopup) {
+      tg.showPopup(
+        {
+          title: ref,
+          message: text,
+          buttons: [
+            { id: 'fav', type: 'default', text: '⭐ В избранное' },
+            { id: 'share', type: 'default', text: '↗ Поделиться' },
+            { id: 'cancel', type: 'cancel' },
+          ],
+        },
+        async (buttonId) => {
+          if (buttonId === 'fav') {
+            await storage.setItem(key, JSON.stringify({ ref, text }))
+            tg.HapticFeedback?.notificationOccurred?.('success')
+          } else if (buttonId === 'share') {
+            const shareText = `${ref}\n«${text}»`
+            const url = `https://t.me/share/url?url=&text=${encodeURIComponent(shareText)}`
+            tg.openTelegramLink(url)
+          }
+        }
+      )
+    } else {
+      if (window.confirm(`Добавить в избранное?\n\n${ref}\n${text}`)) {
+        await storage.setItem(key, JSON.stringify({ ref, text }))
+        alert('Добавлено в избранное')
+      }
+    }
+  }
+
+  const openFavorites = async () => {
+    const keys = await storage.getKeys()
+    const items = await Promise.all(
+      keys.map(async (key) => {
+        const raw = await storage.getItem(key)
+        try {
+          return { key, ...JSON.parse(raw) }
+        } catch {
+          return null
+        }
+      })
+    )
+    setFavorites(items.filter(Boolean))
+    setView('favorites')
+  }
+
+  const removeFavorite = async (key) => {
+    await storage.removeItem(key)
+    setFavorites((prev) => prev.filter((f) => f.key !== key))
+  }
 
   return (
     <div className="app">
@@ -59,7 +119,10 @@ function App() {
 
       {view === 'books' && (
         <div className="list">
-          <h1>Библия</h1>
+          <div className="header-row">
+            <h1>Библия</h1>
+            <button className="fav-nav-btn" onClick={openFavorites}>⭐ Избранное</button>
+          </div>
           {bibleData.map((book, idx) => (
             <div key={book.abbrev} className="list-item" onClick={() => openBook(idx)}>
               {bookName(book)}
@@ -85,9 +148,23 @@ function App() {
         <div className="reader">
           <h2>{bookName(currentBook)} {chapterIndex + 1}</h2>
           {currentChapter.map((verse, idx) => (
-            <p key={idx} className="verse">
+            <p key={idx} className="verse" onClick={() => handleVerseTap(idx, verse)}>
               <span className="verse-num">{idx + 1}</span> {verse}
             </p>
+          ))}
+        </div>
+      )}
+
+      {view === 'favorites' && (
+        <div className="list">
+          <h2>Избранное</h2>
+          {favorites.length === 0 && <p className="hint">Пока пусто — тапни по любому стиху при чтении</p>}
+          {favorites.map((f) => (
+            <div key={f.key} className="fav-item">
+              <div className="fav-ref">{f.ref}</div>
+              <div className="fav-text">{f.text}</div>
+              <button className="fav-remove" onClick={() => removeFavorite(f.key)}>Удалить</button>
+            </div>
           ))}
         </div>
       )}

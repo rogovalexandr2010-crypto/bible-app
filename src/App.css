@@ -31,8 +31,24 @@ body {
   cursor: pointer;
 }
 
-.list h1, .list h2 {
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
+}
+
+.fav-nav-btn {
+  background: var(--secondary-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.list h1, .list h2 {
+  margin: 0 0 16px 0;
 }
 
 .list-item {
@@ -60,6 +76,13 @@ body {
 .reader .verse {
   line-height: 1.6;
   margin: 0 0 10px 0;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.reader .verse:active {
+  background: var(--secondary-bg);
 }
 
 .verse-num {
@@ -68,4 +91,36 @@ body {
   font-weight: bold;
   margin-right: 4px;
   vertical-align: super;
+}
+
+.hint {
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.fav-item {
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.fav-ref {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.fav-text {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.fav-remove {
+  background: none;
+  border: none;
+  color: #e05252;
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
 }
