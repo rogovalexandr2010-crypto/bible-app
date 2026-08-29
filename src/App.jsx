@@ -7,6 +7,24 @@ import { BOOK_NAMES, BOOK_ABBR, HIGHLIGHT_COLORS } from './data/bookMeta'
 import BookPicker from './components/BookPicker'
 import './App.css'
 
+// Ссылка на Mini App — используется для диплинков на конкретный стих (share)
+const BOT_APP_URL = 'https://t.me/my_bible_reader_bot/read'
+
+function buildVerseLink(book, chapter, verse) {
+  return `${BOT_APP_URL}?startapp=${book.abbrev}_${chapter}_${verse}`
+}
+
+// Разбирает строку вида "gn_1_1" или ключ закладки "bm_gn_1_1" → {abbrev, chapter, verse}
+function parseVerseRef(raw) {
+  const parts = raw.split('_')
+  if (parts[0] === 'bm') parts.shift()
+  const verse = Number(parts.pop())
+  const chapter = Number(parts.pop())
+  const abbrev = parts.join('_')
+  if (!abbrev || Number.isNaN(chapter) || Number.isNaN(verse)) return null
+  return { abbrev, chapter, verse }
+}
+
 function dayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 0)
   return Math.floor((date - start) / 86400000)
@@ -173,6 +191,15 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, 0))
   }
 
+    const scrollToVerse = (cIdx, vIdx) => {
+    const el = document.getElementById(`v-${cIdx}-${vIdx}`)
+    if (!el) return
+    const topbar = document.querySelector('.topbar-sticky')
+    const offset = (topbar?.offsetHeight || 0) + 8 // + небольшой зазор
+    const y = el.getBoundingClientRect().top + window.scrollY - offset
+    window.scrollTo({ top: Math.max(y, 0), behavior: 'auto' })
+  }
+
   const navigateTo = (bIdx, cIdx, vIdx) => {
     setBookIndex(bIdx)
     setChapterIndex(cIdx)
@@ -187,16 +214,35 @@ function App() {
     } else {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const el = document.getElementById(`v-${cIdx}-${vIdx}`)
-          el?.scrollIntoView({ block: 'start' })
+          scrollToVerse(cIdx, vIdx)
         })
       })
     }
   }
 
-  const openVerseOfDay = () => {
+   const openVerseOfDay = () => {
     navigateTo(verseOfDay.bookIdx, verseOfDay.chapterIdx, verseOfDay.verseIdx)
   }
+
+  const goToBookmark = (bm) => {
+    const ref = parseVerseRef(bm.key)
+    if (!ref) return
+    const bIdx = bibleData.findIndex((b) => b.abbrev === ref.abbrev)
+    if (bIdx === -1) return
+    navigateTo(bIdx, ref.chapter - 1, ref.verse - 1)
+  }
+
+  // Открытие мини-аппа по ссылке на конкретный стих (Telegram передаёт startapp в start_param)
+  useEffect(() => {
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    if (!startParam) return
+    const ref = parseVerseRef(startParam)
+    if (!ref) return
+    const bIdx = bibleData.findIndex((b) => b.abbrev === ref.abbrev)
+    if (bIdx === -1) return
+    navigateTo(bIdx, ref.chapter - 1, ref.verse - 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
       const goBack = () => {
     if (view === 'reader') setView('chapters')
@@ -343,7 +389,10 @@ function App() {
 
   const shareSelection = () => {
     const items = collectSelected()
-    shareText(items.map((i) => `${i.ref}\n«${i.text}»`).join('\n\n'))
+    const message = items
+      .map((i) => `${i.ref}\n«${i.text}»\n${buildVerseLink(currentBook, i.cIdx + 1, i.vIdx + 1)}`)
+      .join('\n\n')
+    shareText(message)
     exitSelection()
   }
 
@@ -437,7 +486,8 @@ function App() {
             setActiveVerseMenu(null)
           }}
           onShare={() => {
-            shareText(`${activeVerseMenu.ref}\n«${activeVerseMenu.text}»`)
+            const link = buildVerseLink(currentBook, activeVerseMenu.chapterIdx + 1, activeVerseMenu.verseIdx + 1)
+            shareText(`${activeVerseMenu.ref}\n«${activeVerseMenu.text}»\n\n${link}`)
             setActiveVerseMenu(null)
           }}
           onHighlight={(colorId) => applyHighlight(activeVerseMenu.chapterIdx, activeVerseMenu.verseIdx, colorId)}
@@ -464,7 +514,7 @@ function App() {
           </div>
         </div>
       )}
-      
+
       {view === 'books' && (
         <div className="list">
           <div className="header-row">
@@ -544,7 +594,7 @@ function App() {
         <div className="list">
           <h2>Закладки</h2>
           {bookmarks.length === 0 && <p className="hint">Пока пусто — тапни по стиху при чтении и выбери «Закладка»</p>}
-          {bookmarks.map((b) => (
+                    {bookmarks.map((b) => (
             <div key={b.key} className="fav-item">
               {editingKey === b.key ? (
                 <input
@@ -556,9 +606,20 @@ function App() {
                   onKeyDown={(e) => e.key === 'Enter' && saveEditBookmark(b)}
                 />
               ) : (
-                <div className="fav-ref" onClick={() => startEditBookmark(b)}>{b.name} ✎</div>
+                <div className="fav-ref-row">
+                  <div className="fav-ref" onClick={() => goToBookmark(b)}>{b.name}</div>
+                  <button
+                    className="fav-edit-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      startEditBookmark(b)
+                    }}
+                  >
+                    ✎
+                  </button>
+                </div>
               )}
-              <div className="fav-text">{b.text}</div>
+              <div className="fav-text" onClick={() => goToBookmark(b)}>{b.text}</div>
               <button className="fav-remove" onClick={() => removeBookmark(b.key)}>Удалить</button>
             </div>
           ))}

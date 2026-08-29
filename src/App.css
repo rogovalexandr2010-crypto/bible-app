@@ -184,6 +184,7 @@ body {
   text-overflow: ellipsis;
   max-width: 130px;
 }
+
 /* читалка — лента глав */
 .chapter-block {
   margin-bottom: 24px;
@@ -230,10 +231,28 @@ body {
   margin-bottom: 8px;
 }
 
+.fav-ref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .fav-ref {
   font-weight: bold;
-  margin-bottom: 4px;
   cursor: pointer;
+  flex: 1;
+}
+
+.fav-edit-btn {
+  background: none;
+  border: none;
+  color: var(--hint);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
 }
 
 .fav-name-input {
