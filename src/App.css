@@ -507,3 +507,69 @@ body {
   font-size: 16px;
   cursor: pointer;
 }
+
+/* поиск */
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 4px 4px 4px 12px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--hint);
+  cursor: pointer;
+  padding: 6px 10px;
+  flex-shrink: 0;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-result-item {
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.search-result-ref {
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--link);
+  margin-bottom: 4px;
+}
+
+.search-result-text {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.search-highlight {
+  background: #ffe066;
+  color: #222;
+  border-radius: 3px;
+  padding: 0 1px;
+}

@@ -1,9 +1,10 @@
+import VerseMenu from './components/VerseMenu'
+import SearchView from './components/SearchView'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import bibleData from './data/bible.json'
 import { storage } from './storage'
 import { BOOK_NAMES, BOOK_ABBR, HIGHLIGHT_COLORS } from './data/bookMeta'
 import BookPicker from './components/BookPicker'
-import VerseMenu from './components/VerseMenu'
 import './App.css'
 
 function dayOfYear(date) {
@@ -25,7 +26,7 @@ function hexToRgba(hex, alpha) {
 }
 
 function App() {
-  const [view, setView] = useState('books') // books | chapters | reader | bookmarks | settings
+  const [view, setView] = useState('books') // books | chapters | reader | bookmarks | settings | search
   const [bookIndex, setBookIndex] = useState(null)
   const [lastPosition, setLastPosition] = useState(null) // { bookAbbrev, chapterIdx }
   const [chapterIndex, setChapterIndex] = useState(null)
@@ -196,11 +197,12 @@ function App() {
     navigateTo(verseOfDay.bookIdx, verseOfDay.chapterIdx, verseOfDay.verseIdx)
   }
 
-  const goBack = () => {
+    const goBack = () => {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
     else if (view === 'bookmarks') setView('books')
     else if (view === 'settings') setView('books')
+    else if (view === 'search') setView('books')
   }
 
   useEffect(() => {
@@ -451,9 +453,9 @@ function App() {
           <div className="header-row">
             <h1>Библия</h1>
             <div className="header-actions">
+              <button className="icon-btn" onClick={() => setView('search')}>🔍</button>
               <button className="icon-btn" onClick={openBookmarks}>🔖</button>
-              <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>
-            </div>
+              <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>            </div>
           </div>
 
           <div className="verse-of-day" onClick={openVerseOfDay}>
@@ -559,6 +561,7 @@ function App() {
           </div>
         </div>
       )}
+
 
       {selectionMode && (
         <div className="selection-bar">
