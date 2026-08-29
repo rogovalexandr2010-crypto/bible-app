@@ -157,6 +157,19 @@ body {
   font-size: 18px;
 }
 
+.topbar-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.topbar-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
 .breadcrumb {
   background: var(--secondary-bg);
   border: none;
@@ -166,8 +179,11 @@ body {
   font-size: 15px;
   cursor: pointer;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
 }
-
 /* читалка — лента глав */
 .chapter-block {
   margin-bottom: 24px;

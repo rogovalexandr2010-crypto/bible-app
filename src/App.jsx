@@ -46,6 +46,7 @@ function App() {
   const [selectedVerses, setSelectedVerses] = useState(new Set())
 
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [viewBeforeOverlay, setViewBeforeOverlay] = useState('books')
 
   const [activeChapterIdx, setActiveChapterIdx] = useState(null)
   const [activeVerseIdx, setActiveVerseIdx] = useState(null)
@@ -197,12 +198,22 @@ function App() {
     navigateTo(verseOfDay.bookIdx, verseOfDay.chapterIdx, verseOfDay.verseIdx)
   }
 
-    const goBack = () => {
+      const goBack = () => {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
-    else if (view === 'bookmarks') setView('books')
-    else if (view === 'settings') setView('books')
-    else if (view === 'search') setView('books')
+    else if (view === 'bookmarks' || view === 'settings' || view === 'search') {
+      setView(viewBeforeOverlay)
+    }
+  }
+
+  const openSearch = () => {
+    setViewBeforeOverlay(view)
+    setView('search')
+  }
+
+  const openSettings = () => {
+    setViewBeforeOverlay(view)
+    setView('settings')
   }
 
   useEffect(() => {
@@ -366,6 +377,7 @@ function App() {
   }
 
   const openBookmarks = async () => {
+    setViewBeforeOverlay(view)
     const keys = await storage.getKeys()
     const bmKeys = keys.filter((k) => k.startsWith('bm_'))
     const items = await Promise.all(
@@ -441,21 +453,27 @@ function App() {
         <button className="back-btn" onClick={goBack}>← Назад</button>
       )}
 
-      {view === 'reader' && currentBook && (
+            {view === 'reader' && currentBook && (
         <div className="topbar-sticky">
           <button className="back-btn topbar-back" onClick={goBack}>←</button>
           <button className="breadcrumb" onClick={() => setPickerOpen(true)}>{breadcrumbText}</button>
+          <div className="topbar-actions">
+            <button className="icon-btn" onClick={openSearch}>🔍</button>
+            <button className="icon-btn" onClick={openBookmarks}>🔖</button>
+            <button className="icon-btn" onClick={openSettings}>⚙</button>
+          </div>
         </div>
       )}
-
+      
       {view === 'books' && (
         <div className="list">
           <div className="header-row">
             <h1>Библия</h1>
             <div className="header-actions">
-              <button className="icon-btn" onClick={() => setView('search')}>🔍</button>
+              <button className="icon-btn" onClick={openSearch}>🔍</button>
               <button className="icon-btn" onClick={openBookmarks}>🔖</button>
-              <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>            </div>
+              <button className="icon-btn" onClick={openSettings}>⚙</button>
+            </div>
           </div>
 
           <div className="verse-of-day" onClick={openVerseOfDay}>
@@ -562,6 +580,9 @@ function App() {
         </div>
       )}
 
+      {view === 'search' && (
+        <SearchView bibleData={bibleData} onSelectVerse={navigateTo} />
+      )}
 
       {selectionMode && (
         <div className="selection-bar">
