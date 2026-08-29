@@ -16,6 +16,7 @@ body {
 }
 
 .app {
+  width: 100%;
   padding: 16px;
   max-width: 600px;
   margin: 0 auto;
@@ -91,7 +92,7 @@ body {
 }
 
 .books-grid.full-names {
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
 }
 
 .book-cell {
@@ -106,10 +107,20 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 44px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .books-grid.full-names .book-cell {
-  font-size: 12px;
+  font-size: 11px;
+  padding: 8px 4px;
+}
+
+.cell-active {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+  font-weight: bold;
 }
 
 /* сетка глав */

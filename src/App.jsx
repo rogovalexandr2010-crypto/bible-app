@@ -27,6 +27,7 @@ function hexToRgba(hex, alpha) {
 function App() {
   const [view, setView] = useState('books') // books | chapters | reader | bookmarks | settings
   const [bookIndex, setBookIndex] = useState(null)
+  const [lastPosition, setLastPosition] = useState(null) // { bookAbbrev, chapterIdx }
   const [chapterIndex, setChapterIndex] = useState(null)
   const [loadedChapters, setLoadedChapters] = useState([])
 
@@ -67,6 +68,15 @@ function App() {
       setSettingsLoaded(true)
     })
     loadHighlights()
+    storage.getItem('lastPosition').then((raw) => {
+      if (raw) {
+        try {
+          setLastPosition(JSON.parse(raw))
+        } catch {
+          // игнорируем битые данные
+        }
+      }
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -103,7 +113,7 @@ function App() {
     return refs
   }, [])
 
-  const verseOfDay = useMemo(() => {
+  const computeVerseOfDay = () => {
     const today = new Date()
     const seed = today.getFullYear() * 1000 + dayOfYear(today)
     const idx = seededIndex(seed, allVerseRefs.length)
@@ -116,8 +126,26 @@ function App() {
       ref: shortRef(book, cIdx + 1, vIdx + 1),
       text: book.chapters[cIdx][vIdx],
     }
+  }
+
+  const [verseOfDay, setVerseOfDay] = useState(() => computeVerseOfDay())
+
+  // пересчитываем стих дня ровно в полночь, если мини-апп остаётся открытым
+  useEffect(() => {
+    let timerId
+    const scheduleNextMidnight = () => {
+      const now = new Date()
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2)
+      const ms = nextMidnight.getTime() - now.getTime()
+      timerId = setTimeout(() => {
+        setVerseOfDay(computeVerseOfDay())
+        scheduleNextMidnight()
+      }, ms)
+    }
+    scheduleNextMidnight()
+    return () => clearTimeout(timerId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allVerseRefs])
+  }, [])
 
   const currentBook = bookIndex !== null ? bibleData[bookIndex] : null
 
@@ -126,12 +154,20 @@ function App() {
     setView('chapters')
   }
 
+  const savePosition = (bIdx, cIdx) => {
+    const book = bibleData[bIdx]
+    const pos = { bookAbbrev: book.abbrev, chapterIdx: cIdx }
+    setLastPosition(pos)
+    storage.setItem('lastPosition', JSON.stringify(pos))
+  }
+
   const openChapter = (idx) => {
     setChapterIndex(idx)
     setLoadedChapters([idx])
     setView('reader')
     setActiveChapterIdx(idx)
     setActiveVerseIdx(0)
+    savePosition(bookIndex, idx)
     requestAnimationFrame(() => window.scrollTo(0, 0))
   }
 
@@ -143,6 +179,7 @@ function App() {
     setActiveChapterIdx(cIdx)
     setActiveVerseIdx(vIdx ?? 0)
     setPickerOpen(false)
+    savePosition(bIdx, cIdx)
     if (vIdx === null || vIdx === undefined) {
       requestAnimationFrame(() => window.scrollTo(0, 0))
     } else {
@@ -414,7 +451,7 @@ function App() {
           <div className="header-row">
             <h1>Библия</h1>
             <div className="header-actions">
-              <button className="icon-btn" onClick={openBookmarks}>⭐</button>
+              <button className="icon-btn" onClick={openBookmarks}>🔖</button>
               <button className="icon-btn" onClick={() => setView('settings')}>⚙</button>
             </div>
           </div>
@@ -429,7 +466,7 @@ function App() {
             {bibleData.map((book, idx) => (
               <div
                 key={book.abbrev}
-                className="book-cell"
+                className={`book-cell ${lastPosition?.bookAbbrev === book.abbrev ? 'cell-active' : ''}`}
                 title={fullBookName(book)}
                 onClick={() => openBook(idx)}
               >
@@ -445,7 +482,13 @@ function App() {
           <h2>{fullBookName(currentBook)}</h2>
           <div className="chapters-grid">
             {currentBook.chapters.map((_, idx) => (
-              <div key={idx} className="chapter-cell" onClick={() => openChapter(idx)}>
+              <div
+                key={idx}
+                className={`chapter-cell ${
+                  lastPosition?.bookAbbrev === currentBook.abbrev && lastPosition?.chapterIdx === idx ? 'cell-active' : ''
+                }`}
+                onClick={() => openChapter(idx)}
+              >
                 {idx + 1}
               </div>
             ))}
@@ -531,7 +574,7 @@ function App() {
               />
             ))}
           </div>
-          <button className="selection-action" onClick={bookmarkSelection}>⭐</button>
+          <button className="selection-action" onClick={bookmarkSelection}>🔖</button>
           <button className="selection-action" onClick={shareSelection}>↗</button>
         </div>
       )}

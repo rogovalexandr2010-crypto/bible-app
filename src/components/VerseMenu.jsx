@@ -14,7 +14,7 @@ function VerseMenu({ verseRef, verseText, activeColor, onClose, onBookmark, onSh
         <div className="verse-menu-text">{verseText}</div>
 
         <div className="verse-menu-actions">
-          <button className="verse-menu-action" onClick={onBookmark}>⭐ Закладка</button>
+          <button className="verse-menu-action" onClick={onBookmark}>🔖 Закладка</button>
           <button className="verse-menu-action" onClick={onShare}>↗ Поделиться</button>
         </div>
 
