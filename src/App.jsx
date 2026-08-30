@@ -1,10 +1,10 @@
-import VerseMenu from './components/VerseMenu'
-import SearchView from './components/SearchView'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import bibleData from './data/bible.json'
 import { storage } from './storage'
 import { BOOK_NAMES, BOOK_ABBR, HIGHLIGHT_COLORS } from './data/bookMeta'
 import BookPicker from './components/BookPicker'
+import VerseMenu from './components/VerseMenu'
+import SearchView from './components/SearchView'
 import './App.css'
 
 // Ссылка на Mini App — используется для диплинков на конкретный стих (share)
@@ -191,13 +191,33 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, 0))
   }
 
-    const scrollToVerse = (cIdx, vIdx) => {
+  // Единая точка расчёта отступа под закреплённую шапку — используется и при
+  // прокрутке к стиху, и при определении "текущего" стиха для breadcrumb,
+  // чтобы обе логики были согласованы и не расходились на пару пикселей.
+  const getTopbarOffset = () => {
+    const topbar = document.querySelector('.topbar-sticky')
+    return (topbar?.offsetHeight || 0) + 8
+  }
+
+  const scrollToVerse = (cIdx, vIdx, startTime = Date.now()) => {
     const el = document.getElementById(`v-${cIdx}-${vIdx}`)
     if (!el) return
-    const topbar = document.querySelector('.topbar-sticky')
-    const offset = (topbar?.offsetHeight || 0) + 8 // + небольшой зазор
-    const y = el.getBoundingClientRect().top + window.scrollY - offset
-    window.scrollTo({ top: Math.max(y, 0), behavior: 'auto' })
+    const offset = getTopbarOffset()
+    const targetY = Math.max(el.getBoundingClientRect().top + window.scrollY - offset, 0)
+    window.scrollTo({ top: targetY, behavior: 'auto' })
+
+    // Если целевая позиция ещё недостижима (страница короче, чем нужно —
+    // следующие главы ленты могли ещё не подгрузиться), браузер обрежет
+    // скролл до максимума. Перепроверяем на следующих кадрах и докручиваем,
+    // пока фактическая позиция не совпадёт с целевой — даём на это до 2 секунд
+    // (может понадобиться подгрузить несколько коротких глав подряд).
+    if (Date.now() - startTime < 2000) {
+      requestAnimationFrame(() => {
+        if (Math.abs(window.scrollY - targetY) > 2) {
+          scrollToVerse(cIdx, vIdx, startTime)
+        }
+      })
+    }
   }
 
   const navigateTo = (bIdx, cIdx, vIdx) => {
@@ -220,7 +240,7 @@ function App() {
     }
   }
 
-   const openVerseOfDay = () => {
+  const openVerseOfDay = () => {
     navigateTo(verseOfDay.bookIdx, verseOfDay.chapterIdx, verseOfDay.verseIdx)
   }
 
@@ -244,7 +264,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-      const goBack = () => {
+  const goBack = () => {
     if (view === 'reader') setView('chapters')
     else if (view === 'chapters') setView('books')
     else if (view === 'bookmarks' || view === 'settings' || view === 'search') {
@@ -292,11 +312,12 @@ function App() {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
+        const threshold = getTopbarOffset() - 12 // небольшой допуск на округление
         const verses = document.querySelectorAll('.verse')
         let found = null
         for (const el of verses) {
           const rect = el.getBoundingClientRect()
-          if (rect.top >= 60) {
+          if (rect.top >= threshold) {
             found = el
             break
           }
@@ -503,7 +524,7 @@ function App() {
         <button className="back-btn" onClick={goBack}>← Назад</button>
       )}
 
-            {view === 'reader' && currentBook && (
+      {view === 'reader' && currentBook && (
         <div className="topbar-sticky">
           <button className="back-btn topbar-back" onClick={goBack}>←</button>
           <button className="breadcrumb" onClick={() => setPickerOpen(true)}>{breadcrumbText}</button>
@@ -594,7 +615,7 @@ function App() {
         <div className="list">
           <h2>Закладки</h2>
           {bookmarks.length === 0 && <p className="hint">Пока пусто — тапни по стиху при чтении и выбери «Закладка»</p>}
-                    {bookmarks.map((b) => (
+          {bookmarks.map((b) => (
             <div key={b.key} className="fav-item">
               {editingKey === b.key ? (
                 <input
